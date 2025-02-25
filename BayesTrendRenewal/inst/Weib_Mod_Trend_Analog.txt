@@ -1,0 +1,57 @@
+
+data {
+  Constant <- 10000
+  for (i in 1:N){
+    ones[i] <- 1
+  }
+  for (i in 1:nVol){
+    onesCen[i] <- 1
+  }
+}
+
+model {
+    
+  for (j in 1:nVol){
+
+    for (i in (n1[j] + 1):n2[j]) {
+      
+      # Equation (7) Bebbington 2010
+      phi[i - j] <- mu[j] + (1 - mu[j]) * kappa[j] * pow(t[i]/T[j], kappa[j] - 1)
+      # Get inter arrival times using Phi(i) - Phi(i - 1)
+      inter[i - j] <- (mu[j] * t[i] + (1 - mu[j]) * T[j] * pow(t[i]/T[j], kappa[j])) - (mu[j] * t[i - 1] + (1 - mu[j]) * T[j] * pow(t[i - 1]/T[j], kappa[j]))
+      # 2nd term of likelihood equation (5)
+      L[i - j] <- (B[j] * beta * A[j] * alpha * pow(B[j]*beta*inter[i - j], (A[j]*alpha) - 1) * exp(-pow(B[j]*beta*inter[i - j], (A[j]*alpha)))) * phi[i - j]
+      # Divide by Constant for ones trick
+      p[i - j] <- L[i - j] / Constant
+      ones[i - j] ~ dbern(p[i - j])
+
+    }
+
+    # Calculate censord inter-event time
+    censor[j] <- (mu[j] * T[j] + (1 - mu[j]) * T[j] * pow(T[j]/T[j], kappa[j])) - (mu[j] * t[n2[j]] + (1 - mu[j]) * T[j] * pow(t[n2[j]]/T[j], kappa[j]))
+    # Weibul survival function first term of eqution 5
+    LCen[j] <- exp(-pow(B[j]*beta * censor[j], (A[j]*alpha)))
+    pCen[j] <- LCen[j] / Constant
+    onesCen[j] ~ dbern(pCen[j]) 
+
+  }
+
+  alpha ~ dnorm(0, 0.001)T(0,)
+  beta ~ dnorm(0, 0.001)T(0,)
+  
+
+  for(i in 1:nVol){
+
+    A[i] ~ dgamma(1/pow(sigmaA,2), 1/pow(sigmaA,2))
+    B[i] ~ dgamma(1/pow(sigmaB,2), 1/pow(sigmaB,2))
+    #mu[i] ~ dbeta(0.5,0.5)
+    #mu[i] ~ dbeta(1,1)
+    mu[i] ~ dunif(0,1)
+    kappa[i] ~ dnorm(0, 0.01)T(0,)
+  }
+
+
+  sigmaA ~ dt(0, 0.04, 3)T(0,)
+  sigmaB ~ dt(0, 0.04, 3)T(0,)
+
+}

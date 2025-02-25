@@ -1,0 +1,23 @@
+
+model {
+  for (i in 1:nVol){
+    for (j in n1[i]:n2[i]){
+      isCensored[j] ~ dinterval(x[j], censLimVec[j])
+      x[j] ~ dweib(A[i]*alpha, pow(B[i]*beta, A[i]*alpha))
+    }
+  }
+
+  ## Priors
+  beta ~ dnorm(0,10^-4)T(0,)
+  alpha ~ dnorm(0,10^-4)T(0,)
+
+  for (j in 1:nVol){
+    A[j] ~ dgamma(1/pow(sigmaA,2), 1/pow(sigmaA,2))
+    B[j] ~ dgamma(1/pow(sigmaB,2), 1/pow(sigmaB,2))
+  }
+
+  sigmaA ~ dt(0,0.04,3)T(0,)
+  sigmaB ~ dt(0,0.04,3)T(0,)
+
+}
+
